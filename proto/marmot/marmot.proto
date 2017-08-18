@@ -1,0 +1,399 @@
+// Copyright 2014 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// Modifying this file requires modifications to several other files.
+// The protocol buffer is simply used for wire/file serialization and not for
+// use in either the client or the server where it is converted into native
+// forms.
+// You must also modify these files for the relevant changes:
+// marmot/client/work.go
+// marmot/client/convert.go
+// marmot/service/convert/...
+// marmot/work/...
+
+syntax = "proto3";
+
+package marmot;
+
+// States represents the various states a container object can be in.
+enum States {
+  UNKNOWN = 0;
+
+  // NotStarted indicates that the object hasn't started execution.
+  NOT_STARTED = 1;
+
+  // AdminNotStarted indicates the Labor object was sent to the server, but
+  // was not intended to run until started by an RPC or human.
+  ADMIN_NOT_STARTED = 2;
+
+  // Running indicates the object is currently executing.
+  RUNNING = 3;
+
+  // Pausing indicates the object is intending to pause execution.
+  PAUSING = 4;
+
+  // Paused indicates the object has paused execution.
+  PAUSED = 5;
+
+  // AdminPaused indicates that a human has paused execution.
+  ADMIN_PAUSED = 6;
+
+  // CrisisPaused indicates that the crisis service for emergency control has
+  // paused execution.
+  CRISIS_PAUSED = 7;
+
+  // Completed indicates the object has completed execution successfully.
+  COMPLETED = 8;
+
+  // Failed indicates the object failed its execution.
+  FAILED = 9;
+
+  // Stopping indicates the object is attempting to stop.
+  STOPPING = 10;
+
+  // Stopped indicates the object's execution was stopped.
+  STOPPED = 11;
+};
+
+// Reasons are reasons why a container failed.
+enum Reasons {
+  // Indicates that no failure occurred.
+  NO_FAILURE = 0;
+
+  // Indicates that a pre-check failed.
+  PRE_CHECK_FAILURE = 1;
+
+  // Indicates that a post-check failed.
+  CONT_CHECK_FAILURE = 2;
+
+  // Inidcates that a max failure occurred.
+  MAX_FAILURES = 3;
+};
+
+// State represents the state of a container.
+message State {
+  // State is the current state of a container.
+  States state = 1;
+
+  // Reason is the reason for a failure.
+  Reasons reason = 2;
+};
+
+// Timing describes when objects start and stop.
+message Timing {
+  // Started is when the object started execution.
+  int64 Started = 1;
+  // Ended is when the object ended execution.
+  int64 Ended = 2;
+  // Submitted is when the object was added to the system.
+  // Only valid for Labor objects.
+  int64 Submitted = 3;
+};
+
+// HashedData holds
+message HashedData {
+
+}
+
+// Labor is the top level container representing all the work to be done.
+message Labor {
+  message Private {}
+
+  // Private holds fields that are used by the client/server, not users
+  // directly.
+  Private private = 1;
+
+  // A UUIDv4 identifier.  Cannot be set by the client.
+  string id = 2;
+
+  // A UUIDv4 identifier.  This must be set by the client.  Prevents multiple
+  // duplicate submissions in a multi-master environment.
+  string client_id = 3;
+
+  // Name is a descriptive name for the Labor.
+  string name = 4;
+
+  // Desc is a longer description of what the Labor is trying to accomplish.
+  string desc = 5;
+
+  // Tags provides a list of labels attached to the Labor.
+  repeated string tags = 6;
+
+  // Timing includes information on various timing of operations.
+  Timing timing = 7;
+
+  // State holds the current state of the Labor.  This cannot be set by the
+  // sender.
+  State state = 8;
+
+  // Tasks are sub-containers of a Labor.
+  repeated Task tasks = 9;
+};
+
+// Tasks represent a set of work that will be done as a group at a certain
+// concurrency level with a certain failure tolerance.  Tasks can be used
+// divide sections of work from each other, such as canarying a change and the
+// main block of changes.  Or it could be used to divide up tasks with breaks
+// of 30 minutes between each set, etc....
+message Task {
+  message Private {}
+
+  // Private holds fields that are used by the client/server, not users
+  // directly.
+  Private private = 1;
+
+  // A UUIDv4 identifier.  Cannot be set by the client.
+  string id = 2;
+
+  // Name is a descriptive name for a Task.
+  string name = 3;
+
+  // Desc is a longer description of what the Task is trying to accomplish.
+  string desc = 4;
+
+  // Timing includes information on various timing of operations.
+  Timing timing = 5;
+
+  // State holds the current state of the Task.  This cannot be set by the
+  // sender.
+  State state = 6;
+
+  // The amount of failures, if exceeded, will cause
+  // the Task to Fail.
+  int64 tolerated_failures = 7;
+
+  // The amount of Sequences to execute in Tandem.
+  int64 concurrency = 8; // Defaults to 1.
+
+  //  How long to wait between the contChecks completing
+  // and the next time to run the checks, in seconds.
+  int64 cont_check_interval = 9;
+
+  // Indicates to pass the amount of failures that occurred in
+  // this Task onto the next Task.  The next Task will start with that number
+  // of failures instead of 0.
+  bool pass_failures = 10;
+
+  // Jobs to run that act as pre-checks.  These Jobs run concurrently before
+  // the sequences run and if any fail, the Task automatically fails.
+  repeated Job pre_checks = 11;
+
+  // Jobs to run that act as both pre-checks and are run at cont_check_intervals
+  // for the life of the Task.  If any Jobs fail, the Task fails.
+  repeated Job cont_checks = 12;
+
+  // Sequences to run at the concurrency level set.
+  repeated Sequence sequences = 13;
+};
+
+// A series of Jobs, usually targeted at a particular entity (device, cluster,...)
+// A Sequence executes sequentially in the order the Jobs were added until
+// either a Job fails or all Jobs complete.
+message Sequence {
+  message Private {}
+
+  // Private holds fields that are used by the client/server, not users
+  // directly.
+  Private private = 1;
+
+  // A UUIDv4 identifier.  Cannot be set by the client.
+  string id = 2;
+
+  // target is the name of what this sequence targets. This could be a device,
+  // a service, a directory... whatever makes sense for whatever is being done.
+  string target = 3;
+
+  string desc = 4;
+
+  // Timing includes information on various timing of operations.
+  Timing timing = 5;
+
+  // State holds the current state of the Sequence.  This cannot be set by the
+  // sender.
+  State state = 6;
+
+  // Jobs is a set of Jobs to execute.
+  repeated Job jobs = 10;
+};
+
+// Job represents a plugin that will be executed.
+message Job {
+  message Private {
+    // args_hash holds the hash to lookup the data for args in Labor.hashed_data.
+    // This is used internally, where users can normally just look at .args.
+    string args_hash = 9;
+
+    // output_hash holds the hash to lookup the data for output in
+    // Labor.hashed_data.  This is used internally, where users can normally
+    // just look at .output.
+    string output_hash = 10;
+  }
+
+  // Private holds fields that are used by the client/server, not users
+  // directly.
+  Private private = 1;
+
+  // A UUIDv4 identifier.  Cannot be set by the client.
+  string id = 2;
+
+  // The path to the plugin.
+  string plugin = 3;
+
+  // Description of what your attempting to do.
+  string desc = 4;
+
+  // Timeout is how long, in seconds, to wait for the Job to complete.  If not
+  // set this defaults to 5 minutes.
+  int64 timeout = 5;
+
+  // Timing includes information on various timing of operations.
+  Timing timing = 6;
+
+  // State holds the current state of the Job.  This cannot be set by the
+  // sender.
+  State state = 7;
+
+  // The arguments to send to the plugin.  Args are protocol buffer
+  // version 3 in JSON format.
+  string args = 8;
+
+  // The result from the plugin.  Output is a protocol buffer version 3 in
+  // JSON format.
+  string Output = 9;
+
+  // This is how many times to retry if the initial attempt fails.
+  int64 retries = 10;
+
+  // This is how long to wait, in seconds, before doing a retry.
+  int64 retry_delay = 11;
+}
+
+// A request to submit a Labor for processing.
+message SubmitReq {
+  // The Labor to process.
+  Labor labor = 1;
+
+  // If set, will begin execution immediately.
+  bool StartOnSubmit = 2;
+};
+
+// The response to a Submit().
+message SubmitResp {
+  // The UUIDv4 representing the Labor.
+  string id = 1;
+};
+
+// A request to monitor a Labor until it completes.
+message MonitorReq {
+  string id = 1;
+}
+
+// A streaming response containing the Labor with only state data.
+message MonitorResp {
+  // The Labor with only the state data (no Args or Output for Jobs).
+  Labor labor = 2;
+};
+
+// Used to start a Labor that was submitted without StartOnSubmit set.
+message StartReq {
+  // The ID of the Labor.
+  string id = 1;
+};
+
+// The response to the request for Start().
+message StartResp {};
+
+// Request that a Labor is paused.
+message PauseReq {
+  // The ID of the Labor to pause.
+  string id = 1;
+};
+
+// The response to the request for Pause().
+message PauseResp {};
+
+// Request to unpause a Labor.
+message ResumeReq {
+  // The ID of the Labor to unpause.
+  string id = 1;
+};
+
+// The response to the request for Resume().
+message ResumeResp {};
+
+// Request to stop a Labor.
+message StopReq {
+  // The ID of the Labor to stop.
+  string id = 1;
+};
+
+// The response to the request for Stop().
+message StopResp {};
+
+// LaborFilter is a search filter used for searching for Labors.
+message LaborFilter {
+  // Statees returns objects that are currently at one the "states".
+  // If empty, all states are included.
+  repeated States states = 1;
+
+  // Locates Labors starting with the string.
+  string name_prefix = 2;
+
+  // name_suffix locates Labors ending with the string.
+  string name_suffix = 3;
+
+  // Matches any Labor that has any tag listed.
+  repeated string tags = 4;
+
+  // Includes only Labors that were submitted at or after submit_begin.
+  // This is recorded in unix epoch seconds.
+  int64 submit_begin = 5;
+
+  // Only include an object which was submitted before submit_end.
+  // This is recorded in unix epoch seconds.
+  int64 submit_end = 6;
+};
+
+// A request for searching out Labors meeting certain conditions.
+message LaborSearchReq {
+  // A filter for locating Labors.
+  LaborFilter filter = 1;
+};
+
+// FetchLaborReq is used to retrieve a single Labor from the service.
+message FetchLaborReq {
+  // The id of the Labor.
+  string id = 1;
+
+  // Indicates if the data for the Labor should be included.
+  bool full = 2;
+};
+
+service MarmotService {
+  rpc Submit(SubmitReq) returns (SubmitResp);
+
+  rpc Monitor(MonitorReq) returns (stream MonitorResp);
+
+  rpc Start(StartReq) returns (StartResp);
+
+  rpc Pause(PauseReq) returns (PauseResp);
+
+  rpc Resume(ResumeReq) returns (ResumeResp);
+
+  rpc Stop(StopReq) returns (StopResp);
+
+  rpc SearchLabor(LaborSearchReq) returns (stream Labor);
+
+  rpc FetchLabor(FetchLaborReq) returns (Labor);
+};

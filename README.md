@@ -1,6 +1,9 @@
 # Marmot
 ## One line summary
 Marmot is a service for processing workflows targeting DevOps/SRE needs.
+
+**NOTICE** This product is still in development and is not production ready.
+ 
 ## The long summary
 Marmot is a GRPC service that executes workflow descriptions against
 infrastructure (network devices, servers, kubernetes pods, ...).
