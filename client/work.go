@@ -17,8 +17,8 @@ package client
 import (
 	"time"
 
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 
 	pb "github.com/google/marmot/proto/marmot"
 )
