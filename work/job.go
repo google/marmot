@@ -100,7 +100,7 @@ func (j *Job) Validate() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	if !j.cogInfo.client.Loaded(j.CogPath) {
-		if err := j.cogInfo.client.Load(j.CogPath); err != nil {
+		if err := j.cogInfo.client.Load(ctx, j.CogPath); err != nil {
 			return fmt.Errorf("could not load Cog %q: %s", j.CogPath, err)
 		}
 	}

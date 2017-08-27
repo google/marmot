@@ -30,6 +30,10 @@ import (
 	// Loads the inmemory storage registration.  As instance supplants much of
 	// main, the import goes here.
 	_ "github.com/google/marmot/service/storage/inmemory"
+
+	// Loads the docker and local Cog loades.
+	_ "github.com/johnsiilver/cog/client/loaders/docker"
+        _ "github.com/johnsiilver/cog/client/loaders/local"
 )
 
 // Args are arguments to New().

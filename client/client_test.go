@@ -53,6 +53,7 @@ func TestInsecure(t *testing.T) {
 
 	for _, test := range tests {
 		args := instance.Args{
+			SIP:        "localhost",
 			SPort:      0,
 			MaxCrashes: 3,
 			Insecure:   true,

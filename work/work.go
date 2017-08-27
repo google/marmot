@@ -377,7 +377,7 @@ func executeCog(ctx context.Context, args executeArgs) (output []byte, state Sta
 	}
 
 	if !args.cogInfo.client.Loaded(args.cogPath) {
-		if err = args.cogInfo.client.Load(args.cogPath); err != nil {
+		if err = args.cogInfo.client.Load(ctx, args.cogPath); err != nil {
 			return nil, Failed, false, err
 		}
 	}
