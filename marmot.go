@@ -20,8 +20,10 @@ import (
 	"os"
 
 	"github.com/golang/glog"
-	"github.com/johnsiilver/golib/http/server"
 	"github.com/google/marmot/instance"
+	cogStorage "github.com/google/marmot/service/cogs/storage"
+	tomlKV "github.com/google/marmot/service/cogs/storage/toml"
+	"github.com/johnsiilver/golib/http/server"
 	flag "github.com/spf13/pflag"
 )
 
@@ -47,6 +49,12 @@ var (
 	runWeb = flag.Bool("webserver", false, "Indicates if you wish to run a webserver")
 	hport  = flag.Int32("hport", 0, "Port to run the webserver on. Defaults to random.")
 	errLog = flag.String("http_errorlog", "", "The file path to write the http server's error log. By default, we do not write one")
+)
+
+// These flags are for the Cog's key/value store.
+var (
+	tomlKVPath = flag.String("tomlkv", "", "Path to the TOML key/value store file. This can be used to store configuration information "+
+		"for plugins.")
 )
 
 var validStorage = map[string]bool{
@@ -84,6 +92,15 @@ func main() {
 		panic(err)
 	}
 
+	var kv cogStorage.Reader
+	if *tomlKVPath != "" {
+		var err error
+		kv, err = tomlKV.New(*tomlKVPath)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	args := instance.Args{
 		SPort:      *sport,
 		MaxCrashes: *maxCrashes,
@@ -91,6 +108,7 @@ func main() {
 		CertFile:   *certFile,
 		KeyFile:    *keyFile,
 		Storage:    *storage,
+		CogKV:      kv,
 	}
 
 	marmot, err := instance.New(args)

@@ -23,6 +23,7 @@ import (
 	log "github.com/golang/glog"
 	pb "github.com/google/marmot/proto/marmot"
 	"github.com/google/marmot/service"
+	cogStorage "github.com/google/marmot/service/cogs/storage"
 	"github.com/google/marmot/work"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -33,7 +34,7 @@ import (
 
 	// Loads the docker and local Cog loades.
 	_ "github.com/johnsiilver/cog/client/loaders/docker"
-        _ "github.com/johnsiilver/cog/client/loaders/local"
+	_ "github.com/johnsiilver/cog/client/loaders/local"
 )
 
 // Args are arguments to New().
@@ -52,6 +53,8 @@ type Args struct {
 	CertFile, KeyFile string
 	// Storage is the type of backend storage to use.
 	Storage string
+	// CogKV is the Key/Value storage for all Cogs.
+	CogKV cogStorage.Reader
 }
 
 // Instance holds an instance of a Marmot server.
@@ -67,6 +70,10 @@ func New(args Args) (*Instance, error) {
 	store, err := retrieveStorage(args.Storage)
 	if err != nil {
 		return nil, err
+	}
+
+	if args.CogKV == nil {
+		log.Error("WARNING: No Cog Kev/Value store provided, which will likely cause problems")
 	}
 
 	return &Instance{
@@ -90,7 +97,7 @@ func (i *Instance) Run() {
 	log.Infof("Listening on %s", lis.Addr().String())
 	i.addr = lis.Addr().String()
 
-	srv, err := service.New(i.store, i.args.MaxCrashes)
+	srv, err := service.New(i.store, i.args.CogKV, i.args.MaxCrashes)
 	if err != nil {
 		panic(err)
 	}
