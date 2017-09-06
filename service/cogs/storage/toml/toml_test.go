@@ -191,7 +191,7 @@ func TestRead(t *testing.T) {
 		err := kv.Read("cog2", "hello", myString)
 		if err != nil {
 			glog.Infof("error when getting cog2 key 'hello': %s", err)
-			time.Sleep(1 * time.Second)
+			time.Sleep(500 * time.Millisecond)
 			continue
 		}
 		if *myString != "world" {

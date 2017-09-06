@@ -20,6 +20,7 @@ import (
 	"time"
 
 	log "github.com/golang/glog"
+	cogStorage "github.com/google/marmot/service/cogs/storage"
 	"github.com/google/marmot/service/convert"
 	"github.com/google/marmot/service/coordinator"
 	"github.com/google/marmot/work"
@@ -32,11 +33,12 @@ import (
 type Marmot struct {
 	coord   *coordinator.Coordinator
 	store   work.Storage
+	cogKV   cogStorage.Reader
 	cogInfo *work.CogInfo
 }
 
 // New is the constructor for Marmot.
-func New(store work.Storage, maxCrashes int) (*Marmot, error) {
+func New(store work.Storage, cogKV cogStorage.Reader, maxCrashes int) (*Marmot, error) {
 	cogInfo, err := work.NewCogInfo(maxCrashes)
 	if err != nil {
 		return nil, err
@@ -50,6 +52,7 @@ func New(store work.Storage, maxCrashes int) (*Marmot, error) {
 	return &Marmot{
 		coord:   coord,
 		store:   store,
+		cogKV:   cogKV,
 		cogInfo: cogInfo,
 	}, nil
 }

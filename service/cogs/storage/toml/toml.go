@@ -24,7 +24,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/fsnotify/fsnotify"
 	"github.com/golang/glog"
-	"github.com/google/marmot/cogs/storage"
+	"github.com/google/marmot/service/cogs/storage"
 )
 
 // Store represents the TOML storage.
